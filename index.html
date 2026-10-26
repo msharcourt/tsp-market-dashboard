@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TSP & Market Dashboard v9 — Passive</title>
+<style>
+:root{
+  --bg:#f3f5f7;--panel:#fff;--text:#17212b;--muted:#5e6b78;
+  --border:#d8dee5;--accent:#165c93;--accent2:#0f4774;
+  --warn:#744b00;--warnbg:#fff6df;--good:#087f5b;--bad:#b42318;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
+header{background:#fff;border-bottom:1px solid var(--border);padding:14px 18px 12px;position:sticky;top:0;z-index:30;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+h1{margin:0 0 3px;font-size:23px}
+.sub,.note{color:var(--muted);font-size:12px;line-height:1.4}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;max-width:900px}
+input.tab-radio{position:absolute;left:-10000px}
+.tab-label{border:2px solid var(--accent);background:#eef5fb;color:var(--accent2);border-radius:10px;padding:12px 16px;font-size:16px;font-weight:800;cursor:pointer;text-align:center}
+.tab-label small{display:block;font-size:11px;font-weight:650;margin-top:2px}
+#tab-tsp-radio:checked ~ header .tabs label[for="tab-tsp-radio"],
+#tab-context-radio:checked ~ header .tabs label[for="tab-context-radio"]{background:var(--accent);color:#fff}
+.tabpage{display:none}
+#tab-tsp-radio:checked ~ #tab-tsp{display:block}
+#tab-context-radio:checked ~ #tab-context{display:block}
+.alert{margin:12px 14px 0;padding:10px 12px;border:1px solid #ead39b;background:var(--warnbg);border-radius:9px;color:var(--warn);font-size:13px;line-height:1.45}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:14px}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.04);min-height:575px;display:flex;flex-direction:column}
+.panel-head{padding:11px 14px 8px;border-bottom:1px solid var(--border)}
+.fund{font-size:16px;font-weight:750;display:flex;align-items:baseline;gap:8px}
+.fund strong{font-size:25px;color:var(--accent)}
+.today{padding:7px 14px 0;font-size:11px;font-weight:800;letter-spacing:.055em;color:#52606d}
+.quote{min-height:145px;border-bottom:1px solid var(--border)}
+.chart{height:390px;min-height:390px;flex:1}
+.iquotes{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border)}
+.iquotes>div:first-child{border-right:1px solid var(--border)}
+.wide{grid-column:1/-1;min-height:260px}
+.gbody{display:grid;grid-template-columns:minmax(260px,.65fr) minmax(420px,1.35fr);gap:22px;padding:22px;align-items:center}
+.gcard{border:1px solid var(--border);background:#f8fafc;border-radius:12px;padding:20px}
+.kicker{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#52606d}
+.bigvalue{font-size:42px;font-weight:800;line-height:1.05;margin:6px 0}
+.good{color:var(--good)}.bad{color:var(--bad)}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.metric{border:1px solid var(--border);border-radius:10px;padding:13px;background:#fff;text-align:center}
+.metric .label{font-size:11px;color:var(--muted);font-weight:750;margin-bottom:5px}
+.metric .value{font-size:19px;font-weight:800}
+.source{font-size:12px;color:var(--muted);line-height:1.45;margin-top:12px}
+.source a{color:var(--accent);font-weight:750}
+.context-note{padding:14px;font-size:13px;color:var(--muted)}
+.context-link{display:block;margin:10px 14px 18px;padding:13px;border:2px solid var(--accent);border-radius:10px;text-align:center;color:var(--accent);font-weight:800;text-decoration:none}
+.context-link:hover{background:#eef5fb}
+.cnn-box{padding:24px;display:grid;grid-template-columns:minmax(250px,.65fr) 1.35fr;gap:22px;align-items:center}
+.cnn-score{border:1px solid var(--border);border-radius:12px;padding:20px;background:#f8fafc}
+.cnn-score .value{font-size:38px;font-weight:800}
+
+.snapshot{padding:22px;display:grid;grid-template-columns:minmax(250px,.7fr) 1.3fr;gap:22px;align-items:center;flex:1}
+.snapshot-card{border:1px solid var(--border);border-radius:12px;padding:20px;background:#f8fafc}
+.snapshot-value{font-size:44px;font-weight:800;line-height:1.05;margin:6px 0}
+.snapshot-change{font-size:19px;font-weight:800}
+.snapshot-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.snapshot-metric{border:1px solid var(--border);border-radius:10px;padding:13px;background:#fff;text-align:center}
+.snapshot-metric .label{font-size:11px;color:var(--muted);font-weight:750;margin-bottom:5px}
+.snapshot-metric .value{font-size:19px;font-weight:800}
+.snapshot-link{display:block;margin-top:14px;padding:11px 13px;border:2px solid var(--accent);border-radius:9px;text-align:center;color:var(--accent);font-weight:800;text-decoration:none}
+.snapshot-link:hover{background:#eef5fb}
+.gauge{height:22px;border-radius:12px;background:linear-gradient(90deg,#c7352b 0%,#e7862c 25%,#d7ba44 50%,#78a94a 75%,#23885f 100%);position:relative;margin:18px 0 8px}
+.gauge-marker{position:absolute;top:-7px;width:4px;height:36px;background:#17212b;border-radius:2px;left:28%}
+footer{padding:0 16px 20px;color:var(--muted);font-size:12px;line-height:1.5}
+@media(max-width:900px){
+  .grid{grid-template-columns:1fr}.wide{grid-column:auto}.panel{min-height:575px}
+  .gbody,.cnn-box,.snapshot{grid-template-columns:1fr}
+}
+@media(max-width:620px){
+  .tabs{grid-template-columns:1fr}
+  .iquotes{grid-template-columns:1fr}
+  .iquotes>div:first-child{border-right:0;border-bottom:1px solid var(--border)}
+  .metrics,.snapshot-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<input class="tab-radio" type="radio" name="tabs" id="tab-tsp-radio" checked>
+<input class="tab-radio" type="radio" name="tabs" id="tab-context-radio">
+
+<header>
+  <h1>TSP & Market Dashboard v9 — Passive</h1>
+  <div class="sub">Single HTML file. CSS-only tabs. No helper program, generated data file, background file-writing, or generic relay service.</div>
+
+  <div class="tabs">
+    <label class="tab-label" for="tab-tsp-radio">TSP FUNDS<small>C · S · F · I · G</small></label>
+    <label class="tab-label" for="tab-context-radio">MARKET CONTEXT<small>SPCX · VIX · CNN Fear &amp; Greed · Gold · Bitcoin</small></label>
+  </div>
+</header>
+
+<section id="tab-tsp" class="tabpage">
+<div class="alert">
+  <strong>Legend:</strong> the quote card above each chart shows the instrument's <strong>daily change versus the previous close</strong>.
+  The legend inside the 5-minute chart describes the current 5-minute bar.
+</div>
+
+<div class="grid">
+
+<section class="panel">
+  <div class="panel-head"><div class="fund"><strong>C</strong> SPY — S&amp;P 500 proxy</div><div class="note">Daily change above; 5-minute intraday chart below.</div></div>
+  <div class="today">TODAY VS PREVIOUS CLOSE</div>
+  <div class="quote tradingview-widget-container"><div class="tradingview-widget-container__widget"></div>
+    <script src="https://s3.tradingview.com/external-embedding/embed-widget-symbol-info.js" async>
+    {"symbol":"AMEX:SPY","width":"100%","locale":"en","colorTheme":"light","isTransparent":true}
+    </script>
+  </div>
+  <div class="chart tradingview-widget-container"><div class="tradingview-widget-container__widget" style="height:100%;width:100%"></div>
+    <script src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+    {"autosize":true,"symbol":"AMEX:SPY","interval":"5","timezone":"America/New_York","theme":"light","style":"2","locale":"en","allow_symbol_change":false,"calendar":false,"details":false,"hide_side_toolbar":true,"hide_top_toolbar":false,"hide_legend":false,"hide_volume":true,"withdateranges":true,"save_image":false,"support_host":"https://www.tradingview.com"}
+    </script>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><div class="fund"><strong>S</strong> VXF — Extended Market proxy</div><div class="note">Daily change above; 5-minute intraday chart below.</div></div>
+  <div class="today">TODAY VS PREVIOUS CLOSE</div>
+  <div class="quote tradingview-widget-container"><div class="tradingview-widget-container__widget"></div>
+    <script src="https://s3.tradingview.com/external-embedding/embed-widget-symbol-info.js" async>
+    {"symbol":"AMEX:VXF","width":"100%","locale":"en","colorTheme":"light","isTransparent":true}
+    </script>
+  </div>
+  <div class="chart tradingview-widget-container"><div class="tradingview-widget-container__widget" style="height:100%;width:100%"></div>
+    <script src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+    {"autosize":true,"symbol":"AMEX:VXF","interval":"5","timezone":"America/New_York","theme":"light","style":"2","locale":"en","allow_symbol_change":false,"calendar":false,"details":false,"hide_side_toolbar":true,"hide_top_toolbar":false,"hide_legend":false,"hide_volume":true,"withdateranges":true,"save_image":false,"support_host":"https://www.tradingview.com"}
+    </script>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><div class="fund"><strong>F</strong> AGG — U.S. Aggregate Bond proxy</div><div class="note">Daily change above; 5-minute intraday chart below.</div></div>
+  <div class="today">TODAY VS PREVIOUS CLOSE</div>
+  <div class="quote tradingview-widget-container"><div class="tradingview-widget-container__widget"></div>
+    <script src="https://s3.tradingview.com/external-embedding/embed-widget-symbol-info.js" async>
+    {"symbol":"AMEX:AGG","width":"100%","locale":"en","colorTheme":"light","isTransparent":true}
+    </script>
+  </div>
+  <div class="chart tradingview-widget-container"><div class="tradingview-widget-container__widget" style="height:100%;width:100%"></div>
+    <script src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+    {"autosize":true,"symbol":"AMEX:AGG","interval":"5","timezone":"America/New_York","theme":"light","style":"2","locale":"en","allow_symbol_change":false,"calendar":false,"details":false,"hide_side_toolbar":true,"hide_top_toolbar":false,"hide_legend":false,"hide_volume":true,"withdateranges":true,"save_image":false,"support_host":"https://www.tradingview.com"}
+    </script>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><div class="fund"><strong>I</strong> VEA + EMXC — International proxy</div><div class="note">Two proxy components shown separately rather than imposing an arbitrary weighting.</div></div>
+  <div class="today">TODAY VS PREVIOUS CLOSE — PROXY COMPONENTS</div>
+  <div class="iquotes">
+    <div class="quote tradingview-widget-container"><div class="tradingview-widget-container__widget"></div>
+      <script src="https://s3.tradingview.com/external-embedding/embed-widget-symbol-info.js" async>
+      {"symbol":"AMEX:VEA","width":"100%","locale":"en","colorTheme":"light","isTransparent":true}
+      </script>
+    </div>
+    <div class="quote tradingview-widget-container"><div class="tradingview-widget-container__widget"></div>
+      <script src="https://s3.tradingview.com/external-embedding/embed-widget-symbol-info.js" async>
+      {"symbol":"NASDAQ:EMXC","width":"100%","locale":"en","colorTheme":"light","isTransparent":true}
+      </script>
+    </div>
+  </div>
+  <div class="chart tradingview-widget-container"><div class="tradingview-widget-container__widget"></div>
+    <script src="https://s3.tradingview.com/external-embedding/embed-widget-symbol-overview.js" async>
+    {"symbols":[["Developed ex-U.S.","AMEX:VEA|1D"],["Emerging ex-China","NASDAQ:EMXC|1D"]],"chartOnly":false,"width":"100%","height":"100%","locale":"en","colorTheme":"light","autosize":true,"showVolume":false,"showMA":false,"hideDateRanges":false,"hideMarketStatus":false,"hideSymbolLogo":false,"scalePosition":"right","scaleMode":"Percentage","fontFamily":"system-ui, -apple-system, Segoe UI, sans-serif","fontSize":"11","noTimeScale":false,"valuesTracking":"1","changeMode":"price-and-percent","chartType":"area","lineWidth":2,"lineType":0,"dateRanges":["1d|1","5d|5","1m|30"]}
+    </script>
+  </div>
+</section>
+
+<section class="panel wide">
+  <div class="panel-head">
+    <div class="fund"><strong>G</strong> Latest official daily price + prior business day</div>
+    <div class="note">Official daily TSP values available when v8 was built. No iframe or background fetch is used.</div>
+  </div>
+  <div class="gbody">
+    <div class="gcard">
+      <div class="kicker">Latest official G share price</div>
+      <div class="bigvalue">$20.3253</div>
+      <div class="good" style="font-size:18px;font-weight:800">+0.01% day change</div>
+      <div class="source">As of October 23, 2026</div>
+    </div>
+    <div>
+      <div class="metrics">
+        <div class="metric"><div class="label">Prior business day</div><div class="value">$20.3223</div></div>
+        <div class="metric"><div class="label">Dollar change</div><div class="value good">+$0.0030</div></div>
+        <div class="metric"><div class="label">Daily change</div><div class="value good">+0.01%</div></div>
+      </div>
+      <div class="source">
+        Source: official TSP daily share prices as republished by
+        <a href="https://stockanalysis.com/quote/tsp/G/history/" target="_blank" rel="noopener">StockAnalysis</a>.
+        The card is intentionally static for security; after a newer official TSP close is published, this value will not update by itself.
+      </div>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<label class="context-link" for="tab-context-radio">OPEN MARKET CONTEXT → SPCX · VIX · CNN FEAR &amp; GREED · GOLD · BITCOIN</label>
+</section>
+
+<section id="tab-context" class="tabpage">
+<div class="alert">
+  <strong>Market Context:</strong> the green/red percentage beside SPCX, Gold, and Bitcoin is the daily change versus the previous close. This tab is controlled entirely by CSS; no navigation JavaScript is required.
+</div>
+
+<div class="grid">
+
+<section class="panel">
+  <div class="panel-head"><div class="fund"><strong>SPCX</strong> Space Exploration Technologies Corp.</div><div class="note">Daily change above • 5-minute chart below.</div></div>
+  <div class="today">TODAY VS PREVIOUS CLOSE</div>
+  <div class="quote tradingview-widget-container"><div class="tradingview-widget-container__widget"></div>
+    <script src="https://s3.tradingview.com/external-embedding/embed-widget-symbol-info.js" async>
+    {"symbol":"NASDAQ:SPCX","width":"100%","locale":"en","colorTheme":"light","isTransparent":true}
+    </script>
+  </div>
+  <div class="chart tradingview-widget-container"><div class="tradingview-widget-container__widget" style="height:100%;width:100%"></div>
+    <script src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+    {"autosize":true,"symbol":"NASDAQ:SPCX","interval":"5","timezone":"America/New_York","theme":"light","style":"2","locale":"en","allow_symbol_change":false,"calendar":false,"details":false,"hide_side_toolbar":true,"hide_top_toolbar":false,"hide_legend":false,"hide_volume":true,"withdateranges":true,"save_image":false,"support_host":"https://www.tradingview.com"}
+    </script>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <div class="fund"><strong>VIX</strong> Cboe Volatility Index</div>
+    <div class="note">Native Cboe snapshot. TradingView does not permit VIX to be displayed in embedded widgets.</div>
+  </div>
+  <div class="snapshot">
+    <div class="snapshot-card">
+      <div class="kicker">Cboe VIX spot</div>
+      <div class="snapshot-value">19.24</div>
+      <div class="snapshot-change bad">-1.08% (-0.21)</div>
+      <div class="source">Snapshot built Oct. 26, 2026. Cboe public VIX data are delayed at least 20 minutes.</div>
+      <a class="snapshot-link" href="https://www.cboe.com/tradable-products/vix/" target="_blank" rel="noopener">OPEN LIVE CBOE VIX PAGE</a>
+    </div>
+    <div>
+      <div class="snapshot-grid">
+        <div class="snapshot-metric"><div class="label">Previous close</div><div class="value">19.45</div></div>
+        <div class="snapshot-metric"><div class="label">Open</div><div class="value">19.66</div></div>
+        <div class="snapshot-metric"><div class="label">52-week high</div><div class="value">35.30</div></div>
+        <div class="snapshot-metric"><div class="label">52-week low</div><div class="value">13.38</div></div>
+      </div>
+      <div class="source">This card is intentionally static inside the local HTML file so it does not need a browser-side data fetch, proxy, or local updater.</div>
+    </div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><div class="fund"><strong>Gold</strong> XAU/USD spot gold</div><div class="note">Daily change above • 5-minute chart below.</div></div>
+  <div class="today">TODAY VS PREVIOUS CLOSE</div>
+  <div class="quote tradingview-widget-container"><div class="tradingview-widget-container__widget"></div>
+    <script src="https://s3.tradingview.com/external-embedding/embed-widget-symbol-info.js" async>
+    {"symbol":"OANDA:XAUUSD","width":"100%","locale":"en","colorTheme":"light","isTransparent":true}
+    </script>
+  </div>
+  <div class="chart tradingview-widget-container"><div class="tradingview-widget-container__widget" style="height:100%;width:100%"></div>
+    <script src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+    {"autosize":true,"symbol":"OANDA:XAUUSD","interval":"5","timezone":"America/New_York","theme":"light","style":"2","locale":"en","allow_symbol_change":false,"calendar":false,"details":false,"hide_side_toolbar":true,"hide_top_toolbar":false,"hide_legend":false,"hide_volume":true,"withdateranges":true,"save_image":false,"support_host":"https://www.tradingview.com"}
+    </script>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><div class="fund"><strong>Bitcoin</strong> BTC/USD</div><div class="note">Coinbase Bitcoin • current quote above • 5-minute chart below.</div></div>
+  <div class="today">CURRENT MARKET QUOTE</div>
+  <div class="quote tradingview-widget-container"><div class="tradingview-widget-container__widget"></div>
+    <script src="https://s3.tradingview.com/external-embedding/embed-widget-symbol-info.js" async>
+    {"symbol":"COINBASE:BTCUSD","width":"100%","locale":"en","colorTheme":"light","isTransparent":true}
+    </script>
+  </div>
+  <div class="chart tradingview-widget-container"><div class="tradingview-widget-container__widget" style="height:100%;width:100%"></div>
+    <script src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+    {"autosize":true,"symbol":"COINBASE:BTCUSD","interval":"5","timezone":"America/New_York","theme":"light","style":"2","locale":"en","allow_symbol_change":false,"calendar":false,"details":false,"hide_side_toolbar":true,"hide_top_toolbar":false,"hide_legend":false,"hide_volume":true,"withdateranges":true,"save_image":false,"support_host":"https://www.tradingview.com"}
+    </script>
+  </div>
+</section>
+
+<section class="panel wide">
+  <div class="panel-head">
+    <div class="fund"><strong>CNN</strong> Fear &amp; Greed Index</div>
+    <div class="note">Native snapshot of the CNN market-sentiment reading; official CNN page linked directly.</div>
+  </div>
+  <div class="snapshot">
+    <div class="snapshot-card">
+      <div class="kicker">CNN Fear &amp; Greed</div>
+      <div class="snapshot-value">28</div>
+      <div class="snapshot-change bad">Fear</div>
+      <div class="gauge"><div class="gauge-marker"></div></div>
+      <div class="source">0 = Extreme Fear · 50 = Neutral · 100 = Extreme Greed</div>
+      <a class="snapshot-link" href="https://www.cnn.com/markets/fear-and-greed" target="_blank" rel="noopener">OPEN OFFICIAL CNN FEAR &amp; GREED</a>
+    </div>
+    <div>
+      <div class="snapshot-grid">
+        <div class="snapshot-metric"><div class="label">Previous close</div><div class="value">21</div></div>
+        <div class="snapshot-metric"><div class="label">1 week ago</div><div class="value">21</div></div>
+        <div class="snapshot-metric"><div class="label">1 month ago</div><div class="value">37</div></div>
+        <div class="snapshot-metric"><div class="label">1 year ago</div><div class="value">32</div></div>
+      </div>
+      <div class="source">Snapshot built Oct. 26, 2026 from current CNN-derived market-sentiment trackers. It is static inside this local file and will not silently refresh in the background.</div>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<label class="context-link" for="tab-tsp-radio">← RETURN TO TSP FUNDS</label>
+</section>
+
+<footer>
+  Security design: this is one passive HTML file. Tab switching is CSS-only. It does not launch a local helper program,
+  does not create or modify local files, and does not use a generic relay service.
+</footer>
+
+</body>
+</html>
